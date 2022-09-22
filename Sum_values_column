@@ -1,0 +1,3 @@
+#sum values from a column
+*Nome_da_Tabela*
+| summarize sum(*Nome_da_coluna*)

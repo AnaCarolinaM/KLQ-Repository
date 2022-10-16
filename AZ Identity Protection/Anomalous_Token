@@ -1,0 +1,41 @@
+//----------------------LOGS
+// Criado por: Ana Carolina Marinho
+// Data:16/10/2022
+//----------------------
+SecurityAlert
+| where TimeGenerated >= ago(10m) // Put the time range ( d = days | m = minutes | h = hour )
+| where ProductName == "Azure Active Directory Identity Protection"
+| where AlertSeverity <> "Low"
+| where AlertName == "Anomalous Token"
+| extend azr_ip_location = tostring(parse_json(ExtendedProperties).["Client Location"])
+| extend azr_ip_user_account = tostring(parse_json(ExtendedProperties).["User Account"])
+| extend azr_ip_user_name = tostring(parse_json(ExtendedProperties).["User Name"])
+| extend azr_ip_src_ip = tostring(parse_json(Entities)[1].Address)
+| extend azr_ip_malware = tostring(parse_json(Entities)[2].Name)
+| extend azr_ip_src_city = tostring(parse_json(tostring(parse_json(Entities)[1].Location)).City)
+| extend azr_ip_src_state = tostring(parse_json(tostring(parse_json(Entities)[1].Location)).State)
+| extend azr_ip_src_country = tostring(parse_json(tostring(parse_json(Entities)[1].Location)).CountryCode)
+| extend azr_ip_new_src_ip = tostring(parse_json(Entities)[2].Address)
+| extend azr_ip_new_src_city = tostring(parse_json(tostring(parse_json(Entities)[2].Location)).City)
+| extend azr_ip_new_src_state = tostring(parse_json(tostring(parse_json(Entities)[2].Location)).State)
+| extend azr_ip_new_src_country = tostring(parse_json(tostring(parse_json(Entities)[2].Location)).CountryCode)
+| extend azr_ip_ad_userid = tostring(parse_json(Entities)[0].AadUserId)
+| extend azr_ip_alert_link = strcat("https://portal.azure.com/#blade/Microsoft_AAD_IAM/RiskyUsersBlade/userId/", azr_ip_ad_userid, "/detectionTimeRangeType/last7days")
+| summarize quant=count(), arg_min(TimeGenerated, *), count() by SystemAlertId
+| project TimeGenerated, 
+    AlertName,
+    DisplayName,                   
+    Description,
+    azr_ip_user_account,
+    azr_ip_user_name,
+    azr_ip_malware,
+    azr_ip_location,
+    azr_ip_src_ip,
+    azr_ip_src_address=strcat(azr_ip_src_ip, " | ", azr_ip_src_city, " | ", azr_ip_src_state, " | ", azr_ip_src_country),
+    azr_ip_new_address=strcat(azr_ip_new_src_ip, " | ", azr_ip_new_src_city, " | ", azr_ip_new_src_state, " | ", azr_ip_new_src_country),
+    azr_ip_alert_link,
+    quant
+| extend AccountCustomEntity = azr_ip_user_name
+| extend IPCustomEntity = azr_ip_src_ip
+| extend URLCustomEntity = azr_ip_alert_link
+
